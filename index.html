@@ -1,0 +1,55 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>RxLab</title>
+<meta name="description" content="RxLab: prescription entry and labeling for pharmacy skills labs, in one HTML file.">
+<style>
+  :root { --ink: #17212b; --muted: #4a5866; --accent: #16324f; --link: #1f4e79; --bg: #f4f6f8; --card: #ffffff; --line: #c9d3dd; }
+  @media (prefers-color-scheme: dark) {
+    :root { --ink: #e6ebf0; --muted: #a9b6c3; --accent: #9cc3e6; --link: #9cc3e6; --bg: #121a22; --card: #1b2530; --line: #33414f; }
+  }
+  * { box-sizing: border-box; }
+  body { margin: 0; background: var(--bg); color: var(--ink); font: 17px/1.55 "Segoe UI", system-ui, -apple-system, Arial, sans-serif; }
+  main { max-width: 760px; margin: 0 auto; padding: 48px 16px 64px; }
+  h1 { font-size: 40px; line-height: 1.1; margin: 0 0 8px; color: var(--accent); }
+  .lead { font-size: 20px; color: var(--muted); margin: 0 0 32px; }
+  .actions { display: flex; flex-wrap: wrap; gap: 12px; margin: 0 0 40px; }
+  .btn { display: inline-block; padding: 12px 20px; border-radius: 8px; border: 1px solid var(--line); background: var(--card);
+         color: var(--link); text-decoration: none; font-weight: 600; min-height: 44px; }
+  .btn.primary { background: #16324f; border-color: #16324f; color: #ffffff; }
+  h2 { font-size: 22px; margin: 32px 0 8px; }
+  ul { padding-left: 22px; }
+  a { color: var(--link); }
+  footer { margin-top: 48px; padding-top: 16px; border-top: 1px solid var(--line); color: var(--muted); font-size: 15px; }
+</style>
+</head>
+<body>
+<main>
+  <h1>RxLab</h1>
+  <p class="lead">Prescription entry and labeling for pharmacy skills and compounding labs, in one HTML file. Nothing to install.</p>
+
+  <div class="actions">
+    <a class="btn primary" href="RxLab.html">Try the demo</a>
+    <a class="btn" href="https://github.com/acastleman/RxLab">Source and set-up on GitHub</a>
+    <!-- Poster PDF: add the file to the repo and uncomment.
+    <a class="btn" href="RxLab_poster.pdf">Poster (PDF)</a> -->
+  </div>
+
+  <h2>What it does</h2>
+  <ul>
+    <li>Students enter a prescription; picklists fill prescriber and product details, with look-alike entries to catch mismatches.</li>
+    <li>Sig codes are written out into directions that students read and edit before printing.</li>
+    <li>A live label check flags any of 14 required label elements that are missing.</li>
+    <li>Prints the label and auxiliary labels on your existing label stock, marked “For educational use only.”</li>
+    <li>Optional course database: enter on a laptop, print on a lab PC with a pickup code, and grade every save.</li>
+  </ul>
+
+  <h2>The demo</h2>
+  <p>The demo runs standalone: sign in with any email, and everything you enter stays in your browser. It uses fictional prescribers and practice compounds.</p>
+
+  <footer>Andrew Castleman, PharmD, MS · Union University College of Pharmacy · <a href="mailto:acastleman@uu.edu">acastleman@uu.edu</a></footer>
+</main>
+</body>
+</html>

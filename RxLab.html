@@ -1,0 +1,1030 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>RxLab Pharmacy System</title>
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<!--
+  RxLab - prescription entry and label printing for pharmacy skills labs.
+  One self-contained file: open it in Chrome or Edge. Settings are in RXLAB_CONFIG below.
+  https://github.com/acastleman/RxLab
+-->
+<style id="pageSize">@page { size: 4in 2.5in; margin: 0; }</style>
+<style>
+  :root {
+    --bar: #1f3b57; --bar2: #2c5578; --accent: #2a7ab0; --bg: #e9edf1; --panel: #fff;
+    --line: #c7d0d9; --text: #1d2730; --muted: #5d6b78; --ok: #2e7d32; --bad: #c62828; --warn: #b26a00;
+  }
+  * { box-sizing: border-box; }
+  body { margin: 0; font: 13px/1.35 "Segoe UI", Arial, sans-serif; background: var(--bg); color: var(--text); }
+  header { background: var(--bar); color: #fff; display: flex; align-items: center; gap: 18px; padding: 0 14px; height: 44px; }
+  header .brand { font-weight: 700; font-size: 16px; letter-spacing: .3px; }
+  header .brand span { color: #8fc3ea; }
+  header nav { display: flex; height: 100%; }
+  header nav button { background: none; border: 0; color: #cfe0ee; padding: 0 16px; font: inherit; cursor: pointer; height: 100%; border-bottom: 3px solid transparent; }
+  header nav button.active { color: #fff; border-bottom-color: #8fc3ea; background: var(--bar2); }
+  header .user { margin-left: auto; font-size: 12px; color: #cfe0ee; display: flex; gap: 10px; align-items: center; }
+  header .user button { background: none; border: 1px solid #6f8fae; color: #cfe0ee; border-radius: 3px; padding: 2px 8px; cursor: pointer; font: inherit; }
+  .toolbar { background: #d5dde5; border-bottom: 1px solid var(--line); padding: 6px 14px; display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
+  button.btn { background: #fff; border: 1px solid #9aa9b7; border-radius: 3px; padding: 5px 12px; font: inherit; cursor: pointer; }
+  button.btn:hover { background: #f1f5f9; }
+  button.primary { background: var(--accent); color: #fff; border-color: #1d5f8c; }
+  button.primary:hover { background: #236a99; }
+  .kbd { color: var(--muted); font-size: 11px; }
+  #sendStatus { margin-left: auto; font-size: 12px; }
+  #sendStatus.ok { color: var(--ok); } #sendStatus.warn { color: var(--warn); } #sendStatus.bad { color: var(--bad); }
+  main { padding: 12px 14px 160px; }   /* room below the last panel so the taskbar never covers it */
+  .view { display: none; }
+  .view.active { display: block; }
+  .layout { display: grid; grid-template-columns: minmax(0, 1fr) 470px; gap: 12px; align-items: start; }
+  @media (max-width: 1100px) { .layout { grid-template-columns: 1fr; } }
+  fieldset { background: var(--panel); border: 1px solid var(--line); border-radius: 4px; margin: 0 0 10px; padding: 0; min-width: 0; }
+  .ph { background: linear-gradient(#f4f7fa, #e3e9ef); border-bottom: 1px solid var(--line); padding: 5px 10px; font-weight: 600; color: var(--bar); display: flex; justify-content: space-between; gap: 8px; }
+  .ph small { font-weight: 400; color: var(--muted); }
+  .grid { display: grid; grid-template-columns: repeat(6, minmax(0, 1fr)); gap: 6px 10px; padding: 8px 10px 10px; }
+  .grid label { display: flex; flex-direction: column; font-size: 11px; color: var(--muted); font-weight: 600; text-transform: uppercase; letter-spacing: .3px; min-width: 0; }
+  .c1 { grid-column: span 1; } .c2 { grid-column: span 2; } .c3 { grid-column: span 3; } .c4 { grid-column: span 4; } .c6 { grid-column: span 6; }
+  input, select, textarea { font: 13px "Segoe UI", Arial, sans-serif; border: 1px solid #a9b6c2; border-radius: 2px; padding: 4px 6px; margin-top: 2px; background: #fffef2; color: var(--text); text-transform: none; letter-spacing: 0; font-weight: 400; min-width: 0; }
+  input:focus, select:focus, textarea:focus { outline: 2px solid #8fc3ea; background: #fff; }
+  input[readonly] { background: #eef1f4; }
+  textarea { resize: vertical; min-height: 44px; }
+  .inline { flex-direction: row !important; align-items: center; gap: 6px; text-transform: none !important; font-size: 13px !important; color: var(--text) !important; font-weight: 400 !important; }
+  .inline input { margin: 0; }
+  .hint { font-size: 11px; color: var(--muted); padding: 0 10px 8px; }
+  .search { background: #fff url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='14' height='14' viewBox='0 0 24 24' fill='none' stroke='%235d6b78' stroke-width='2.5'%3E%3Ccircle cx='11' cy='11' r='7'/%3E%3Cpath d='M20 20l-4-4'/%3E%3C/svg%3E") no-repeat 7px center; padding-left: 26px; }
+  /* the right column sticks while the form scrolls; capped to the window so its bottom stays reachable */
+  .side { position: sticky; top: 8px; max-height: calc(100vh - 16px); overflow-y: auto; padding-bottom: 40px; }
+  .previewWrap { background: #8a96a3; padding: 14px; border-radius: 4px; display: flex; flex-direction: column; align-items: center; gap: 10px; overflow: auto; }
+  .checks { list-style: none; margin: 0; padding: 8px 10px; columns: 2; font-size: 12px; }
+  .checks li { break-inside: avoid; padding: 1px 0; }
+  .checks li.ok::before { content: "\2713  "; color: var(--ok); font-weight: 700; }
+  .checks li.bad { color: var(--bad); }
+  .checks li.bad::before { content: "\2717  "; font-weight: 700; }
+  .auxpick { display: grid; grid-template-columns: 1fr 1fr; gap: 3px 10px; padding: 8px 10px; font-size: 12px; }
+  .auxpick label { display: flex; gap: 6px; align-items: center; }
+  table.list { width: 100%; border-collapse: collapse; background: #fff; border: 1px solid var(--line); }
+  table.list th { background: #dfe6ed; text-align: left; padding: 6px 8px; font-size: 12px; border-bottom: 1px solid var(--line); }
+  table.list td { padding: 5px 8px; border-bottom: 1px solid #e6ebf0; font-size: 12px; vertical-align: top; }
+  table.list tr:hover td { background: #f3f8fc; }
+  .status { padding: 6px 14px; font-size: 12px; color: var(--muted); }
+  .toast { position: fixed; bottom: 18px; right: 18px; background: var(--bar); color: #fff; padding: 10px 16px; border-radius: 4px; opacity: 0; transition: opacity .2s; pointer-events: none; z-index: 30; }
+  .toast.show { opacity: .95; }
+  .modal { position: fixed; inset: 0; background: rgba(20,35,50,.75); display: flex; align-items: center; justify-content: center; z-index: 20; }
+  .modal[hidden] { display: none; }
+  .modal .box { background: #fff; width: 380px; max-width: calc(100% - 32px); border-radius: 4px; overflow: hidden; box-shadow: 0 8px 30px rgba(0,0,0,.4); }
+  .modal .box .ph { font-size: 15px; padding: 10px 14px; }
+  .modal .grid { grid-template-columns: 1fr; padding: 14px; }
+  .modal .err { color: var(--bad); font-size: 12px; min-height: 16px; padding: 0 14px; }
+  .modal .foot { padding: 0 14px 14px; display: flex; justify-content: flex-end; }
+
+  /* ---------- the label ---------- */
+  .label { width: 4in; height: 2.5in; background: #fff; color: #000; font-family: Arial, Helvetica, sans-serif; padding: .07in .12in .05in; overflow: hidden; display: flex; flex-direction: column; box-shadow: 0 1px 4px rgba(0,0,0,.35); }
+  .label .lh { display: flex; justify-content: space-between; border-bottom: 1.5px solid #000; padding-bottom: 1px; font-size: 7.5pt; line-height: 1.15; }
+  .label .lh .pn { font-weight: 700; font-size: 9pt; }
+  .label .row { display: flex; justify-content: space-between; gap: 6px; }
+  .label .rxline { font-size: 8.5pt; margin-top: 2px; }
+  .label .pt { font-size: 11pt; font-weight: 700; text-transform: uppercase; margin-top: 1px; }
+  .label .sig { font-size: 11pt; font-weight: 700; line-height: 1.2; margin: 3px 0; flex: 1 1 auto; overflow: hidden; }
+  .label .drug { font-size: 9pt; font-weight: 700; }
+  .label .small { font-size: 7.5pt; line-height: 1.2; }
+  .label .edu { font-size: 6pt; font-weight: 700; text-align: center; letter-spacing: .6px; border-top: 1px solid #000; margin-top: 2px; padding-top: 1px; line-height: 1.1; }
+  /* compact layout for stock under 2 in tall: the fixed lines shrink so the directions keep their room */
+  .label.compact { padding: .04in .08in .03in; }
+  .label.compact .lh { display: block; font-size: 6.5pt; line-height: 1.1; }
+  .label.compact .lh .pn { font-size: 8pt; }
+  .label.compact .nw { white-space: nowrap; }
+  .label.compact .rxline { font-size: 7pt; margin-top: 1px; }
+  .label.compact .pt { font-size: 9.5pt; margin-top: 0; }
+  .label.compact .sig { margin: 1px 0; }
+  .label.compact .drug { font-size: 8pt; }
+  .label.compact .small { font-size: 6.5pt; line-height: 1.15; }
+  .label.compact .edu { font-size: 5pt; letter-spacing: .3px; margin-top: 1px; }
+  .auxlabel { width: 4in; height: 2.5in; background: #fff; color: #000; font-family: Arial, sans-serif; padding: .12in; display: flex; flex-wrap: wrap; gap: .08in; align-content: flex-start; box-shadow: 0 1px 4px rgba(0,0,0,.35); }
+  .auxlabel div { border: 2px solid #000; border-radius: 4px; padding: 4px 6px; font-weight: 700; font-size: 8.5pt; text-transform: uppercase; width: calc(50% - .04in); }
+  .aux-yellow { background: #fff176; } .aux-red { background: #ff8a80; } .aux-blue { background: #82b1ff; } .aux-green { background: #b9f6ca; } .aux-orange { background: #ffcc80; } .aux-white { background: #fff; }
+  .paper .label, .paper .auxlabel { box-shadow: none; outline: 1px dashed #777; }
+  .sheetgroup { position: relative; flex: none; }
+  .sheetgroup > * { position: absolute; }
+  .auxslot { width: 1.5in; background: #fff; color: #000; font-family: Arial, Helvetica, sans-serif; font-weight: 700; font-size: 8pt; line-height: 1.1; text-transform: uppercase; text-align: center;
+             padding: .04in .07in; overflow: hidden; display: flex; flex-direction: column; justify-content: center; gap: .04in; box-shadow: 0 1px 4px rgba(0,0,0,.35); }
+  #printArea { display: none; }
+
+  @media print {
+    body { background: #fff; }
+    body > *:not(#printArea) { display: none !important; }
+    #printArea { display: block !important; }
+    #printArea .label, #printArea .auxlabel { box-shadow: none; page-break-after: always; break-after: page; }
+    #printArea .paper .label, #printArea .paper .auxlabel { page-break-after: auto; break-after: auto; margin-bottom: .25in; }
+    #printArea .sheet .label, #printArea .sheet .auxlabel { page-break-after: auto; break-after: auto; }
+    #printArea .sheetpage { position: relative; width: 8.5in; overflow: hidden; page-break-after: always; break-after: page; }
+    #printArea .sheetpage:last-child { page-break-after: auto; break-after: auto; }
+    #printArea .sheetpage > .at { position: absolute; }
+    #printArea .label, #printArea .auxslot { box-shadow: none; }
+    * { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+  }
+</style>
+</head>
+<body>
+
+<header>
+  <div class="brand">Rx<span>Lab</span> Pharmacy System</div>
+  <nav>
+    <button data-view="entry" class="active">Rx Entry</button>
+    <button data-view="history">Rx History</button>
+    <button data-view="settings">Pharmacy Setup</button>
+  </nav>
+  <div class="user"><span id="userBadge"></span><button id="btnSignOut">Sign out</button></div>
+</header>
+
+<!-- ================= RX ENTRY ================= -->
+<section class="view active" id="view-entry">
+  <div class="toolbar">
+    <button class="btn" id="btnNew">New Rx</button>
+    <button class="btn" id="btnPrint">Print Label</button>
+    <button class="btn primary" id="btnSavePrint">Save &amp; Print</button>
+    <button class="btn" id="btnSave">Save Only</button>
+    <button class="btn" id="btnPickup" title="Load an Rx you saved on another device, using its pickup code">Load from another device</button>
+    <span class="kbd">F2 New &middot; F9 Save &amp; Print</span>
+    <span id="sendStatus"></span>
+  </div>
+  <main>
+    <div class="layout">
+      <div>
+        <fieldset>
+          <div class="ph">Patient <small>Type a saved name to recall the profile</small></div>
+          <div class="grid">
+            <label class="c2">Last name<input id="ptLast" list="dlPatients" autocomplete="off"></label>
+            <label class="c2">First name<input id="ptFirst" autocomplete="off"></label>
+            <label class="c1">DOB<input id="ptDob" type="date"></label>
+            <label class="c1">Phone<input id="ptPhone"></label>
+            <label class="c4">Address<input id="ptAddr"></label>
+            <label class="c2">Allergies<input id="ptAllergy" placeholder="NKDA"></label>
+          </div>
+        </fieldset>
+
+        <fieldset>
+          <div class="ph">Prescriber <small>Search by name</small></div>
+          <div class="grid">
+            <label class="c3">Name<input id="drName" class="search" list="dlPrescribers" autocomplete="off" placeholder="Search prescribers..."></label>
+            <label class="c1">Credential<select id="drCred"><option>MD</option><option>DO</option><option>NP</option><option>PA</option><option>DDS</option><option>DVM</option><option>DPM</option><option>OD</option></select></label>
+            <label class="c2">Specialty<input id="drSpecialty"></label>
+            <label class="c3">Practice address<input id="drAddr"></label>
+            <label class="c1">Phone<input id="drPhone"></label>
+            <label class="c1">NPI<input id="drNpi"></label>
+            <label class="c1">DEA<input id="drDea"></label>
+          </div>
+        </fieldset>
+
+        <fieldset>
+          <div class="ph">Prescription</div>
+          <div class="grid">
+            <label class="c1">Rx #<input id="rxNum" readonly></label>
+            <label class="c1">Pickup code<input id="pickup" readonly title="Type this code on a lab computer to load and print this Rx"></label>
+            <label class="c1">Date written<input id="rxWritten" type="date"></label>
+            <label class="c1">Date filled<input id="rxFilled" type="date"></label>
+            <label class="c1">Rx expires<input id="rxExpires" type="date" title="Defaults to 1 year after the date written"></label>
+            <label class="c1">Schedule<select id="rxSched"><option value="">Legend (Rx)</option><option>C-II</option><option>C-III</option><option>C-IV</option><option>C-V</option><option value="OTC">OTC</option></select></label>
+            <label class="c1">DAW<select id="rxDaw"><option value="0">0 - None</option><option value="1">1 - Prescriber</option><option value="2">2 - Patient</option></select></label>
+
+            <label class="c4">Compounded product<input id="product" class="search" list="dlProducts" autocomplete="off" placeholder="Search compounds..."></label>
+            <label class="c2 inline" style="margin-top:16px"><input type="checkbox" id="rxCompound"> Compounded</label>
+
+            <label class="c3">Drug name<input id="drug"></label>
+            <label class="c1">Strength<input id="strength"></label>
+            <label class="c2">Dosage form<input id="form" list="dlForms"></label>
+            <label class="c3" id="lblGeneric">Generic for (brand)<input id="genericFor" placeholder="Leave blank if dispensing brand"></label>
+            <label class="c2" id="lblMfr">Manufacturer<input id="mfr"></label>
+            <label class="c1" id="lblNdc">NDC<input id="ndc" placeholder="00000-0000-00"></label>
+
+            <label class="c6">Sig code<input id="sigCode" placeholder="e.g., 1 T PO BID x 10 D  -  expands when you press Enter or leave the field"></label>
+            <label class="c6">Directions (prints on label)<textarea id="sig"></textarea></label>
+
+            <label class="c1">Qty written<input id="qtyWritten"></label>
+            <label class="c1">Qty dispensed<input id="qty"></label>
+            <label class="c1">Unit<input id="qtyUnit" list="dlUnits"></label>
+            <label class="c1">Days supply<input id="days" type="number" min="0"></label>
+            <label class="c1">Refills<input id="refills" type="number" min="0" value="0"></label>
+            <label class="c1">RPh initials<input id="rph" maxlength="5"></label>
+          </div>
+        </fieldset>
+
+        <fieldset id="compoundBox" style="display:none">
+          <div class="ph">Compound formula</div>
+          <div class="grid">
+            <label class="c6">Formula / ingredients<textarea id="ingredients" rows="5"></textarea></label>
+            <label class="c2">Lot / control #<input id="lot" readonly title="Assigned when the product is selected"></label>
+            <label class="c2">Compounded by<input id="compoundedBy"></label>
+            <label class="c2">Storage<select id="storage"><option value="">--</option><option>Store at room temperature</option><option>Store in refrigerator</option><option>Store in freezer</option></select></label>
+          </div>
+        </fieldset>
+
+        <fieldset>
+          <div class="ph">Beyond-use date</div>
+          <div class="grid">
+            <label class="c2">Discard after<input id="bud" type="date"></label>
+          </div>
+        </fieldset>
+      </div>
+
+      <div class="side">
+        <fieldset>
+          <div class="ph">Label preview <small><span id="sizeName"></span></small></div>
+          <div class="previewWrap" id="preview"></div>
+        </fieldset>
+        <fieldset>
+          <div class="ph">Auxiliary labels <small><label><input type="checkbox" id="printAux" checked> print</label></small></div>
+          <div class="auxpick" id="auxPick"></div>
+        </fieldset>
+        <fieldset>
+          <div class="ph">Label check</div>
+          <ul class="checks" id="checks"></ul>
+        </fieldset>
+      </div>
+    </div>
+  </main>
+</section>
+
+<!-- ================= HISTORY ================= -->
+<section class="view" id="view-history">
+  <div class="toolbar">
+    <input id="histSearch" class="search" placeholder="Search patient, drug, Rx #..." style="width:260px;margin:0">
+    <button class="btn" id="btnExport">Export CSV</button>
+    <button class="btn" id="btnResend">Resend unsent</button>
+    <button class="btn" id="btnClearHist">Clear history</button>
+  </div>
+  <main>
+    <table class="list">
+      <thead><tr><th>Rx #</th><th>Filled</th><th>Patient</th><th>Drug</th><th>Directions</th><th>Qty</th><th>Rf</th><th>User</th><th>Code</th><th>Sent</th><th></th></tr></thead>
+      <tbody id="histBody"></tbody>
+    </table>
+    <div class="status" id="histStatus"></div>
+  </main>
+</section>
+
+<!-- ================= SETTINGS ================= -->
+<section class="view" id="view-settings">
+  <main style="max-width:780px">
+    <fieldset>
+      <div class="ph">Pharmacy (prints on every label)</div>
+      <div class="grid">
+        <label class="c3">Pharmacy name<input id="setName"></label>
+        <label class="c3">Phone<input id="setPhone"></label>
+        <label class="c6">Address<input id="setAddr"></label>
+        <label class="c3">Pharmacist-in-charge<input id="setPic"></label>
+        <label class="c3">Next Rx #<input id="setNextRx" type="number"></label>
+      </div>
+    </fieldset>
+    <fieldset>
+      <div class="ph">Workstation</div>
+      <div class="grid">
+        <label class="c3">Label stock<select id="setSize">
+          <option value="sheet">Lab label sheet (8.5 in wide, label placed below)</option>
+          <option value="4x2.5">4 x 2.5 in label (label printer)</option>
+          <option value="4x3">4 x 3 in label (label printer)</option>
+          <option value="4x2">4 x 2 in label (label printer)</option>
+          <option value="custom">Custom size (below)</option>
+          <option value="paper">Letter paper (cut out along the dashed line)</option>
+        </select></label>
+        <label class="c1">Width (in)<input id="setW" type="number" step="0.05" min="1"></label>
+        <label class="c1">Height (in)<input id="setH" type="number" step="0.05" min="1"></label>
+        <label class="c1">Scale %<input id="setScale" type="number" step="1" min="50" max="150"></label>
+        <label class="c6 inline"><input type="checkbox" id="setUpper"> Print directions in ALL CAPS</label>
+        <label class="c1">Label left (in)<input id="setOffX" type="number" step="0.05" min="0"></label>
+        <label class="c1">Label top (in)<input id="setOffY" type="number" step="0.05" min="0"></label>
+        <label class="c1">Sheet height (in)<input id="setSheetH" type="number" step="0.25" min="3"></label>
+        <label class="c1">Aux left (in)<input id="setAuxX" type="number" step="0.05" min="0"></label>
+        <label class="c1">Aux top (in)<input id="setAuxY" type="number" step="0.05" min="0"></label>
+        <label class="c1">Aux gap (in)<input id="setAuxGap" type="number" step="0.01" min="0"></label>
+        <div class="c3" style="align-self:end"><button class="btn" id="btnTestPrint" type="button">Print alignment test</button></div>
+      </div>
+      <div class="hint"><b>Lab label sheet:</b> Width/Height are the peel-off label; Label left/top are measured from the sheet's left and top edges to the label's corner. To find them, print the alignment test on plain paper, lay it over a label sheet against a window, and read the label's edges off the rulers. Then print the test on a real label sheet: the dashed box should sit on the label's edges. If it is off, change Label left/top by the amount it missed. The auxiliary column (three 1.5 x 3/8 in labels above one 1.5 x 7/8 in label) is set the same way: Aux left/top is the top-left corner of the first small label, and Aux gap is the space between labels. Leave Sheet height at 11 unless the printer asks for the paper size.</div>
+      <div class="hint">Printing uses the browser's print dialog. On a label printer, choose that printer, set margins to <b>None</b> and scale to <b>100</b> the first time. Use Scale % here to shrink or enlarge everything on the label if the printer trims an edge.</div>
+    </fieldset>
+    <fieldset>
+      <div class="ph">Submissions</div>
+      <div class="hint" style="padding-top:8px" id="cfgStatus"></div>
+    </fieldset>
+    <button class="btn primary" id="btnSaveSettings">Save setup</button>
+  </main>
+</section>
+
+<!-- ================= SIGN IN ================= -->
+<div class="modal" id="loginModal" hidden>
+  <div class="box">
+    <div class="ph">RxLab sign in</div>
+    <div class="grid">
+      <label>Email<input id="loginEmail" autocomplete="off"></label>
+    </div>
+    <div class="err" id="loginErr"></div>
+    <div class="foot"><button class="btn primary" id="btnLogin">Sign in</button></div>
+  </div>
+</div>
+
+<div class="modal" id="pickupModal" hidden>
+  <div class="box">
+    <div class="ph">Load from another device</div>
+    <div class="grid">
+      <div style="font-size:12px">Type the pickup code shown when you saved the Rx on your own device (also in its Rx History). Signed in as <b id="pickupWho"></b>.</div>
+      <label>Pickup code<input id="pickupCode" autocomplete="off" placeholder="K7M-2QX" style="text-transform:uppercase;letter-spacing:2px"></label>
+    </div>
+    <div class="err" id="pickupErr"></div>
+    <div class="foot" style="gap:8px"><button class="btn" id="btnPickupCancel">Cancel</button><button class="btn primary" id="btnPickupLoad">Load</button></div>
+  </div>
+</div>
+
+<div id="printArea"></div>
+<div class="toast" id="toast"></div>
+
+<datalist id="dlPatients"></datalist>
+<datalist id="dlPrescribers"></datalist>
+<datalist id="dlProducts"></datalist>
+<datalist id="dlForms">
+  <option>Tablet</option><option>Capsule</option><option>Suspension</option><option>Solution</option><option>Syrup</option>
+  <option>Cream</option><option>Ointment</option><option>Gel</option><option>Lotion</option><option>Paste</option><option>Powder</option>
+  <option>Suppository</option><option>Troche</option><option>Emulsion</option><option>Mouthwash</option><option>Lip balm</option>
+</datalist>
+<datalist id="dlUnits">
+  <option>tablets</option><option>capsules</option><option>mL</option><option>g</option><option>suppositories</option><option>troches</option><option>each</option>
+</datalist>
+
+<script>
+/* Filled in by build_rxlab.R. Left blank, submissions are saved locally only. */
+const RXLAB_CONFIG = {
+  /* Leave both blank to run standalone: saves stay on this computer, no pickup codes.
+     To collect submissions, run supabase_rxlab.sql in your Supabase project and paste
+     its URL and PUBLISHABLE key here (never the secret / service_role key). */
+  supabaseUrl: "",
+  supabaseKey: "",
+  /* who may sign in (keep in step with the email check in supabase_rxlab.sql),
+     e.g. "^[a-z0-9._%+-]+@myschool\\.edu$" */
+  emailPattern: "^[^@\\s]+@[^@\\s]+\\.[^@\\s]+$",
+  emailHint: "Enter your email address.",
+  emailPlaceholder: "you@school.edu",
+  /* first-run pharmacy details on the label (each PC can change them in Setup) */
+  pharmacy: { name: "Your College of Pharmacy", phone: "(000) 000-0000", addr: "123 Campus Drive, City, ST 00000" }
+};
+const RXLAB_VERSION = "1.5";
+
+/* Prescriber directory: fictional practice prescribers. Replace or add your own. */
+const PRESCRIBERS = [
+  { drName: "Marcus Bell", drCred: "DO", drSpecialty: "Internal Medicine", drAddr: "Westwood Internal Medicine, 455 Westwood Avenue, Jackson, TN 38301", drPhone: "(731) 555-0163", drNpi: "9999990163", drDea: "" },
+  { drName: "Hannah Ortiz", drCred: "NP", drSpecialty: "Women's Health", drAddr: "Madison Women's Health, 1120 Campbell Street, Jackson, TN 38305", drPhone: "(731) 555-0171", drNpi: "9999990171", drDea: "" },
+  { drName: "Samuel Price", drCred: "DDS", drSpecialty: "General Dentistry", drAddr: "Price Family Dentistry, 64 Stonebridge Boulevard, Jackson, TN 38305", drPhone: "(731) 555-0184", drNpi: "9999990184", drDea: "" },
+  { drName: "Linda Tran", drCred: "MD", drSpecialty: "Gastroenterology", drAddr: "West Tennessee Digestive Health, 2600 North Highland Avenue, Jackson, TN 38305", drPhone: "(731) 555-0192", drNpi: "9999990192", drDea: "" }
+];
+
+/* Compound catalog: practice products. Replace or add your own; ids are what the grader keys on. */
+const PRODUCTS = [
+  { id: "x_omeprazole_susp", drug: "Omeprazole Oral Suspension", strength: "2 mg/mL", form: "Suspension", unit: "mL",
+    formula: "Formula - per 100 mL\nOmeprazole 20 mg capsules, 10 capsules (200 mg)\nSodium Bicarbonate 8.4% Solution qs to 100 mL" },
+  { id: "x_mouthwash", drug: "Lidocaine-Diphenhydramine-Antacid Mouthwash", strength: "1:1:1", form: "Mouthwash", unit: "mL",
+    formula: "Formula - equal parts by volume\nLidocaine Viscous 2% 1 part\nDiphenhydramine 12.5 mg/5 mL Elixir 1 part\nAluminum Hydroxide / Magnesium Hydroxide Suspension 1 part" },
+  { id: "x_hydrocortisone_oint", drug: "Hydrocortisone in Aquaphor", strength: "1%", form: "Ointment", unit: "g",
+    formula: "Formula - per 100 g\nHydrocortisone Powder 1 g\nAquaphor qs to 100 g" },
+  { id: "x_spironolactone_susp", drug: "Spironolactone Oral Suspension", strength: "5 mg/mL", form: "Suspension", unit: "mL",
+    formula: "Formula - per 100 mL\nSpironolactone 25 mg tablets, 20 tablets (500 mg)\nOra-Plus 50 mL\nOra-Sweet qs to 100 mL" },
+  { id: "x_progesterone_supp", drug: "Progesterone Vaginal Suppositories", strength: "100 mg", form: "Suppository", unit: "suppositories",
+    formula: "Formula - per suppository\nProgesterone, micronized 100 mg\nPolyethylene Glycol base qs for the mold" },
+  { id: "x_coal_tar_oint", drug: "Coal Tar Solution in Hydrophilic Ointment", strength: "10%", form: "Ointment", unit: "g",
+    formula: "Formula - per 100 g\nCoal Tar Topical Solution 10 mL\nHydrophilic Ointment qs to 100 g" }
+];
+
+(function () {
+  "use strict";
+  const $ = id => document.getElementById(id);
+  const KEY = "rxlab.v1";
+  const SUBMIT_ON = !!(RXLAB_CONFIG.supabaseUrl && RXLAB_CONFIG.supabaseKey);
+
+  const AUX = [
+    ["Shake well before using", "white"], ["Refrigerate. Do not freeze", "blue"], ["For external use only", "red"],
+    ["May cause drowsiness. Alcohol may intensify this effect", "yellow"], ["Take with food", "green"],
+    ["Take on an empty stomach", "green"], ["Finish all of this medication unless otherwise directed", "orange"],
+    ["Do not take with dairy, antacids, or iron", "yellow"], ["Avoid prolonged sun exposure", "orange"],
+    ["For the eye", "blue"], ["For the ear", "blue"], ["For rectal use only", "red"], ["For vaginal use only", "red"],
+    ["Do not swallow", "red"], ["Keep out of reach of children", "white"], ["Compounded medication", "white"],
+    ["Do not drink alcohol", "red"], ["Store at room temperature", "white"]
+  ];
+  const CMPD_AUX = AUX.findIndex(a => a[0] === "Compounded medication");
+
+  // ---------- storage ----------
+  const defaults = {
+    settings: { name: RXLAB_CONFIG.pharmacy.name, phone: RXLAB_CONFIG.pharmacy.phone, addr: RXLAB_CONFIG.pharmacy.addr,
+                pic: "", nextRx: 600001, size: "4x2.5", w: 4, h: 2.5, scale: 100, upper: true,
+                offX: 0.5, offY: 0.3, sheetH: 11, auxX: 4.6, auxY: 0.3, auxGap: 0.06 },
+    history: [], patients: {}, prescribers: {}, queue: []
+  };
+  let db;
+  try { db = JSON.parse(localStorage.getItem(KEY)) || null; } catch (e) { db = null; }
+  db = Object.assign(JSON.parse(JSON.stringify(defaults)), db || {});
+  db.settings = Object.assign({}, defaults.settings, db.settings);
+  function persist() { try { localStorage.setItem(KEY, JSON.stringify(db)); } catch (e) { toast("Could not save: browser storage is unavailable"); } }
+
+  // the signed-in user lasts for this browser tab only, so the next student at a shared PC signs in fresh
+  let user = null;
+  try { user = JSON.parse(sessionStorage.getItem("rxlab.user")); } catch (e) { user = null; }
+
+  // ---------- helpers ----------
+  const esc = s => String(s == null ? "" : s).replace(/[&<>"]/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]));
+  const iso = d => { const x = new Date(d); x.setMinutes(x.getMinutes() - x.getTimezoneOffset()); return x.toISOString().slice(0, 10); };
+  const today = () => iso(new Date());
+  const fmtDate = s => { if (!s) return ""; const [y, m, d] = s.split("-"); return `${m}/${d}/${y}`; };
+  const addYear = s => { const d = new Date(s + "T12:00:00"); d.setFullYear(d.getFullYear() + 1); return iso(d); };
+  function uuid() {
+    const b = crypto.getRandomValues(new Uint8Array(16));
+    b[6] = (b[6] & 15) | 64; b[8] = (b[8] & 63) | 128;
+    const h = [...b].map(x => x.toString(16).padStart(2, "0")).join("");
+    return `${h.slice(0, 8)}-${h.slice(8, 12)}-${h.slice(12, 16)}-${h.slice(16, 20)}-${h.slice(20)}`;
+  }
+  // lot = fill date + 3 random characters (no 0/O/1/I), e.g. 261014-K7Q
+  function newLot() {
+    const A = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789";
+    const r = crypto.getRandomValues(new Uint8Array(3));
+    return today().slice(2).replace(/-/g, "") + "-" + [...r].map(x => A[x % A.length]).join("");
+  }
+  // pickup code: 6 characters with no look-alikes (0/O, 1/I/L, U/V), shown as K7M-2QX
+  function newPickup() {
+    const A = "23456789ABCDEFGHJKMNPQRSTVWXYZ";
+    const r = crypto.getRandomValues(new Uint32Array(6));
+    const c = [...r].map(x => A[x % A.length]).join("");
+    return c.slice(0, 3) + "-" + c.slice(3);
+  }
+  const normPickup = s => String(s || "").toUpperCase().replace(/[^A-Z0-9]/g, "");
+  function toast(msg) { const t = $("toast"); t.textContent = msg; t.classList.add("show"); clearTimeout(toast._t); toast._t = setTimeout(() => t.classList.remove("show"), 2600); }
+
+  const FIELDS = ["ptLast","ptFirst","ptDob","ptPhone","ptAddr","ptAllergy","drName","drCred","drSpecialty","drAddr","drPhone","drNpi","drDea",
+    "rxNum","rxWritten","rxFilled","rxExpires","rxSched","rxDaw","product","drug","strength","form","genericFor","mfr","ndc","sigCode","sig",
+    "qtyWritten","qty","qtyUnit","days","refills","rph","ingredients","lot","compoundedBy","storage","bud","pickup"];
+  const DR_FIELDS = ["drName","drCred","drSpecialty","drAddr","drPhone","drNpi","drDea"];
+  const PT_FIELDS = ["ptLast","ptFirst","ptDob","ptPhone","ptAddr","ptAllergy"];
+
+  let expiresTouched = false;  // stops "Rx expires" following the written date once edited by hand
+
+  function readForm() {
+    const r = {};
+    FIELDS.forEach(f => r[f] = $(f).value.trim());
+    r.rxCompound = $("rxCompound").checked;
+    r.aux = [...document.querySelectorAll("#auxPick input:checked")].map(i => +i.value);
+    const p = PRODUCTS.find(x => x.drug === r.product);
+    r.productId = p ? p.id : "";
+    return r;
+  }
+  function writeForm(r) {
+    FIELDS.forEach(f => { $(f).value = r[f] != null ? r[f] : ""; });
+    $("rxCompound").checked = !!r.rxCompound;
+    document.querySelectorAll("#auxPick input").forEach(i => i.checked = (r.aux || []).includes(+i.value));
+    expiresTouched = !!r.rxExpires && r.rxWritten && r.rxExpires !== addYear(r.rxWritten);
+    toggleCompound(); render();
+  }
+
+  // ---------- sig code expansion ----------
+  const SIG = {
+    PO: "by mouth", SL: "under the tongue", PR: "rectally", PV: "vaginally", TOP: "topically", INH: "by inhalation",
+    OU: "into both eyes", OD: "into the right eye", OS: "into the left eye", AU: "into both ears", AD: "into the right ear", AS: "into the left ear",
+    QD: "once daily", DAILY: "once daily", BID: "twice daily", TID: "three times daily", QID: "four times daily",
+    QHS: "at bedtime", HS: "at bedtime", QAM: "every morning", QPM: "every evening", QOD: "every other day",
+    AC: "before meals", PC: "after meals", WF: "with food", UD: "as directed", AAA: "to affected area",
+    QW: "once weekly", STAT: "immediately", MAX: "maximum", F: "for", FOR: "for", X: "for", D: "days", WK: "weeks"
+  };
+  const INDICATIONS = { HA: "headache", N: "nausea", V: "vomiting", NV: "nausea and vomiting", SOB: "shortness of breath", CP: "chest pain", ITCH: "itching" };
+  const UNITS = { T: ["tablet","tablets"], TAB: ["tablet","tablets"], C: ["capsule","capsules"], CAP: ["capsule","capsules"],
+    ML: ["mL","mL"], TSP: ["teaspoonful","teaspoonfuls"], TBSP: ["tablespoonful","tablespoonfuls"], GTT: ["drop","drops"],
+    SUPP: ["suppository","suppositories"], TRO: ["troche","troches"], PUFF: ["puff","puffs"], APPLIC: ["applicatorful","applicatorfuls"], G: ["gram","grams"] };
+  const VERBS = { APP: "Apply", APPLY: "Apply", INST: "Instill", INS: "Insert", INSERT: "Insert", DIS: "Dissolve", CHEW: "Chew", USE: "Use",
+    TAKE: "Take", GIVE: "Give", RUB: "Rub", SPRAY: "Spray", WASH: "Wash", GARGLE: "Gargle", MIX: "Mix" };
+
+  // verb implied by the dose unit / route when the code starts with a number
+  function defaultVerb(toks) {
+    const T = toks.map(t => t.toUpperCase());
+    if (T.includes("GTT") && T.some(t => /^(OU|OD|OS|AU|AD|AS)$/.test(t))) return "Instill";
+    if (T.includes("SUPP") || T.includes("PR") || T.includes("PV") || T.includes("APPLIC")) return "Insert";
+    if (T.includes("PUFF") || T.includes("INH")) return "Inhale";
+    if (T.includes("TRO") || T.includes("SL")) return "Dissolve";
+    return "Take";
+  }
+
+  // A token the expander understands (a code, a number, a pattern such as Q4H or 10D).
+  function isCode(t) {
+    return !!(VERBS[t] || SIG[t] || INDICATIONS[t] || UNITS[t] || t === "PRN" || t === "NTE" ||
+      /^\d+(\.\d+)?(-\d+(\.\d+)?)?$/.test(t) || /^\d+\/\d+$/.test(t) ||
+      /^Q\d+(-\d+)?H$/.test(t) || /^\d+D$/.test(t) || /^[A-Z]+\/(DAY|D)$/.test(t));
+  }
+
+  // Students sometimes type plain English into the sig-code box ("as needed", "times daily").
+  // Expanding every token turned "as" into "into the left ear" (AS) and "daily" into "once daily".
+  // So: when the entry contains a word that is not a code (3+ letters, e.g. "needed"), it is mixed
+  // English, and only tokens typed in CAPITALS are treated as codes; everything else is kept as typed.
+  function expandSig(code) {
+    const toks = code.trim().split(/\s+/).filter(Boolean);
+    if (!toks.length) return "";
+    const norm = raw => raw.toUpperCase().replace(/[.,]$/, "");
+    const isWord = raw => /^[A-Za-z]{3,}[.,]?$/.test(raw) && !isCode(norm(raw));
+    const mixed = toks.some(isWord);
+    const out = []; let lastNum = null; let verbSet = false;
+    toks.forEach((raw, i) => {
+      const t = norm(raw);
+      const bare = raw.replace(/[.,]$/, "");
+      let m;
+      // In mixed English, a token not typed in capitals is a word, not a code.
+      if (mixed && !/\d/.test(bare) && bare !== bare.toUpperCase()) { out.push(raw); return; }
+      // "AS NEEDED" / "AS DIRECTED": AS or AD before an English word is the word "as"/"ad", not an ear.
+      if ((t === "AS" || t === "AD") && toks[i + 1] && isWord(toks[i + 1])) { out.push(raw.toLowerCase()); return; }
+      // "3 TIMES DAILY": DAILY after "times" is just "daily".
+      if (t === "DAILY" && /^times?$/i.test(out[out.length - 1] || "")) { out.push("daily"); return; }
+      if (VERBS[t]) { out.push(i === 0 ? VERBS[t] : VERBS[t].toLowerCase()); verbSet = true; return; }
+      if (/^\d+(\.\d+)?(-\d+(\.\d+)?)?$/.test(t) || /^\d+\/\d+$/.test(t)) {
+        if (i === 0 && !verbSet) { out.push(defaultVerb(toks)); verbSet = true; }
+        lastNum = t; out.push(raw); return;
+      }
+      if (UNITS[t]) { const plural = lastNum && !/^(1|0?\.\d+|1\/\d+)$/.test(lastNum); out.push(UNITS[t][plural ? 1 : 0]); return; }
+      if ((m = t.match(/^Q(\d+(-\d+)?)H$/))) { out.push(`every ${m[1]} hours`); return; }
+      if ((m = t.match(/^(\d+)D$/))) { out.push(`${m[1]} days`); return; }
+      if ((m = t.match(/^([A-Z]+)\/(DAY|D)$/)) && UNITS[m[1]]) { out.push(UNITS[m[1]][1] + " per day"); return; }
+      if (t === "PRN") {
+        const nx = (toks[i + 1] || "").toUpperCase();
+        const isCode = !nx || SIG[nx] || UNITS[nx] || /^Q\d/.test(nx) || /^\d/.test(nx);
+        out.push(isCode ? "as needed" : "as needed for"); return;
+      }
+      if (t === "INH" && out[0] === "Inhale") return;
+      if (t === "NTE") { out.push(". Do not exceed"); return; }
+      if (INDICATIONS[t]) { out.push(INDICATIONS[t]); return; }
+      if (SIG[t]) { out.push(SIG[t]); return; }
+      out.push(raw.toLowerCase());
+    });
+    const s = out.join(" ").replace(/\s+\./g, ".").replace(/\s+/g, " ").trim();
+    return s.charAt(0).toUpperCase() + s.slice(1) + (/[.!]$/.test(s) ? "" : ".");
+  }
+
+  // ---------- rendering ----------
+  const PRESETS = { "4x2.5": [4, 2.5], "4x3": [4, 3], "4x2": [4, 2], paper: [4, 2.5] };
+  const dims = () => ["custom", "sheet"].includes(db.settings.size) ? [+db.settings.w || 4, +db.settings.h || 2.5] : PRESETS[db.settings.size];
+  const sheetH = () => +db.settings.sheetH || 11;
+  function sizeCss() {
+    const s = db.settings.size, [w, h] = dims();
+    $("pageSize").textContent = s === "paper" ? "@page { size: letter; margin: 0.5in; }"
+      : s === "sheet" ? `@page { size: 8.5in ${sheetH()}in; margin: 0; }` : `@page { size: ${w}in ${h}in; margin: 0; }`;
+    $("sizeName").textContent = s === "paper" ? "Letter paper" : s === "sheet" ? `${w} x ${h} in on label sheet` : `${w} x ${h} in`;
+  }
+  // the sheet's auxiliary column: three short labels over one tall one, all 1.5 in wide
+  const AUX_SLOTS = [0.375, 0.375, 0.375, 0.875], AUX_W = 1.5;
+  function geom() {
+    const st = db.settings, [w, h] = dims(), num = (v, d) => (v === "" || v == null || isNaN(+v)) ? d : +v;
+    const g = { lx: num(st.offX, 0.5), ly: num(st.offY, 0.3), w, h, ax: num(st.auxX, 4.6), ay: num(st.auxY, 0.3), gap: num(st.auxGap, 0.06) };
+    let y = g.ay;
+    g.slots = AUX_SLOTS.map(sh => { const r = { x: g.ax, y, w: AUX_W, h: sh }; y += sh + g.gap; return r; });
+    return g;
+  }
+  // first three picks take the short labels; anything after that shares the tall one
+  function auxSlotsHtml(r, g) {
+    const picks = (r.aux || []).map(i => esc(AUX[i][0]));
+    const fill = [picks[0], picks[1], picks[2], picks.slice(3).map(t => `<div>${t}</div>`).join("")];
+    return g.slots.map((sl, i) => `<div class="auxslot" data-slot="${i}" style="left:${sl.x}in;top:${sl.y}in;width:${sl.w}in;height:${sl.h}in">${fill[i] || ""}</div>`);
+  }
+  // the primary label and aux column placed as they sit on the sheet, shifted so the top-left item is at 0,0
+  function sheetGroup(r, withAux) {
+    const g = geom(), items = [{ x: g.lx, y: g.ly, w: g.w, h: g.h }].concat(withAux ? g.slots : []);
+    const x0 = Math.min(...items.map(i => i.x)), y0 = Math.min(...items.map(i => i.y));
+    const x1 = Math.max(...items.map(i => i.x + i.w)), y1 = Math.max(...items.map(i => i.y + i.h));
+    const shift = html => html.replace(/left:([\d.]+)in;top:([\d.]+)in/, (m, a, b) => `left:${(+a - x0).toFixed(3)}in;top:${(+b - y0).toFixed(3)}in`);
+    const parts = [`<div style="left:${(g.lx - x0).toFixed(3)}in;top:${(g.ly - y0).toFixed(3)}in">${labelHtml(r)}</div>`]
+      .concat(withAux ? auxSlotsHtml(r, g).map(shift) : []);
+    return { x0, y0, html: `<div class="sheetgroup" style="width:${(x1 - x0).toFixed(3)}in;height:${(y1 - y0).toFixed(3)}in">${parts.join("")}</div>` };
+  }
+  // shrink aux text that overflows its slot
+  function fitAux(container) {
+    container.querySelectorAll(".auxslot").forEach(el => {
+      let pt = 8; el.style.fontSize = pt + "pt";
+      while ((el.scrollHeight > el.clientHeight + 1 || el.scrollWidth > el.clientWidth + 1) && pt > 5) { pt -= 0.5; el.style.fontSize = pt + "pt"; }
+    });
+  }
+  // full-sheet ruler grid with the current label position drawn as a dashed box
+  function alignmentSheet() {
+    const st = db.settings, H = sheetH(), [w, h] = dims(), x = (+st.offX || 0) * 100, y = (+st.offY || 0) * 100;
+    const W = 850, HH = Math.round(H * 100), g = [];
+    for (let i = 0; i <= W; i += 25) g.push(`<line x1="${i}" y1="0" x2="${i}" y2="${HH}" stroke="${i % 100 ? "#ccc" : "#888"}" stroke-width="${i % 100 ? .4 : .8}"/>`);
+    for (let j = 0; j <= HH; j += 25) g.push(`<line x1="0" y1="${j}" x2="${W}" y2="${j}" stroke="${j % 100 ? "#ccc" : "#888"}" stroke-width="${j % 100 ? .4 : .8}"/>`);
+    for (let i = 0; i <= W; i += 5) { const L = i % 100 ? (i % 50 ? 6 : 12) : 20; g.push(`<line x1="${i}" y1="0" x2="${i}" y2="${L}" stroke="#000" stroke-width=".7"/>`); }
+    for (let j = 0; j <= HH; j += 5) { const L = j % 100 ? (j % 50 ? 6 : 12) : 20; g.push(`<line x1="0" y1="${j}" x2="${L}" y2="${j}" stroke="#000" stroke-width=".7"/>`); }
+    for (let i = 100; i < W; i += 100) g.push(`<text x="${i + 2}" y="30" font-size="11" font-family="Arial">${i / 100}</text>`);
+    for (let j = 100; j < HH; j += 100) g.push(`<text x="22" y="${j - 2}" font-size="11" font-family="Arial">${j / 100}</text>`);
+    g.push(`<rect x="${x}" y="${y}" width="${w * 100}" height="${h * 100}" fill="none" stroke="#000" stroke-width="1.6" stroke-dasharray="6 3"/>`);
+    geom().slots.forEach((sl, i) => {
+      g.push(`<rect x="${sl.x * 100}" y="${sl.y * 100}" width="${sl.w * 100}" height="${sl.h * 100}" fill="none" stroke="#000" stroke-width="1.2" stroke-dasharray="4 2"/>`);
+      g.push(`<text x="${sl.x * 100 + 6}" y="${sl.y * 100 + 14}" font-size="9" font-family="Arial">Aux ${i + 1}</text>`);
+    });
+    g.push(`<text x="${(+st.auxX || 0) * 100}" y="${geom().slots[3].y * 100 + geom().slots[3].h * 100 + 14}" font-size="9" font-family="Arial">Aux: left ${(+st.auxX || 0).toFixed(2)}, top ${(+st.auxY || 0).toFixed(2)}, gap ${(+st.auxGap || 0).toFixed(2)} in</text>`);
+    g.push(`<text x="${x + 8}" y="${y + 20}" font-size="11" font-family="Arial" font-weight="bold">Label: left ${(+st.offX || 0).toFixed(2)} in, top ${(+st.offY || 0).toFixed(2)} in, ${w} x ${h} in</text>`);
+    const sl3 = geom().slots[3], ty = Math.min(HH - 60, Math.max(y + h * 100, (sl3.y + sl3.h) * 100) + 50);
+    ["RxLab alignment test. Rulers are in inches, ticks every 0.05 in, grid every 0.25 in.",
+     "1. Plain paper: lay this over a label sheet against a window and read where the label's left and top edges fall.",
+     "2. Label sheet: the dashed boxes should sit on the labels' edges. Box too far right/down? Lower its left/top by that amount.",
+     "Print at Scale 100 (or Default) with Margins Default or None. Check the 1-inch grid with a ruler: if it is not 1 inch, the dialog is scaling."]
+      .forEach((t, k) => g.push(`<text x="40" y="${ty + k * 16}" font-size="11" font-family="Arial">${t}</text>`));
+    return `<div class="sheetpage" style="height:${H}in"><svg width="8.5in" height="${H}in" viewBox="0 0 ${W} ${HH}" xmlns="http://www.w3.org/2000/svg">${g.join("")}</svg></div>`;
+  }
+
+  function refillText(r) {
+    if (r.refills === "") return "";
+    const n = +r.refills;
+    if (!n) return "No refills remaining";
+    return `${n} refill${n === 1 ? "" : "s"} remaining by ${fmtDate(r.rxExpires)}`;
+  }
+
+  function labelHtml(r) {
+    const st = db.settings, [w, h] = dims(), k = (+st.scale || 100) / 100;
+    const sig = st.upper ? (r.sig || "").toUpperCase() : r.sig;
+    const pt = [r.ptFirst, r.ptLast].filter(Boolean).join(" ");
+    const showForm = r.form && !r.drug.toLowerCase().includes(r.form.toLowerCase());
+    const drugLine = [r.drug, r.strength, showForm ? r.form : ""].filter(Boolean).join(" ");
+    const controlled = /^C-(II|III|IV)$/.test(r.rxSched);
+    const dr = r.drName ? `${r.drName}${r.drCred ? ", " + r.drCred : ""}` : "";
+    const second = r.rxCompound
+      ? `Compounded${r.lot ? " &middot; Lot " + esc(r.lot) : ""}${r.storage ? " &middot; " + esc(r.storage) : ""}`
+      : [r.genericFor ? "Generic for " + esc(r.genericFor) : "", r.mfr ? "Mfr: " + esc(r.mfr) : "", r.ndc ? "NDC " + esc(r.ndc) : ""].filter(Boolean).join(" &middot; ");
+    const edu = `<div class="edu">${controlled ? "CAUTION: Federal law prohibits transfer of this drug to any person other than the patient. &middot; " : ""}FOR EDUCATIONAL USE ONLY</div>`;
+    const drugRow = `<div class="row"><span class="drug">${esc(drugLine)}</span><span class="drug" style="white-space:nowrap">Qty: ${esc(r.qty)} ${esc(r.qtyUnit)}</span></div>`;
+    const box = `style="width:${w / k}in;height:${h / k}in;zoom:${k}"`;
+    // short stock: header on two lines, RPh moved up to the Rx# line, smaller fixed text
+    if (h < 2) return `<div class="label compact" ${box}>
+      <div class="lh"><div class="row"><span class="pn">${esc(st.name)}</span><span class="nw">${esc(st.phone)}</span></div>
+        <div class="row"><span>${esc(st.addr)}</span><span class="nw">${st.pic ? "PIC: " + esc(st.pic) : ""}</span></div></div>
+      <div class="row rxline"><b>Rx# ${esc(r.rxNum)}</b><span>Filled: ${fmtDate(r.rxFilled)}</span><span>RPh: ${esc(r.rph)}</span></div>
+      <div class="pt">${esc(pt) || "&nbsp;"}</div>
+      <div class="sig">${esc(sig)}</div>
+      ${drugRow}
+      ${second ? `<div class="small">${second}</div>` : ""}
+      <div class="row small"><span>${esc(dr)}</span><span class="nw">${esc(refillText(r))}</span></div>
+      <div class="small">Discard after: <b>${fmtDate(r.bud)}</b></div>
+      ${edu}
+    </div>`;
+    // the inner box is laid out at (size / scale) and zoomed, so Scale % shrinks content without changing the page size
+    return `<div class="label" ${box}>
+      <div class="lh"><div><div class="pn">${esc(st.name)}</div>${esc(st.addr)}</div><div style="text-align:right;white-space:nowrap">${esc(st.phone)}<br>${st.pic ? "PIC: " + esc(st.pic) : ""}</div></div>
+      <div class="row rxline"><b>Rx# ${esc(r.rxNum)}</b><span>Filled: ${fmtDate(r.rxFilled)}</span></div>
+      <div class="pt">${esc(pt) || "&nbsp;"}</div>
+      <div class="sig">${esc(sig)}</div>
+      ${drugRow}
+      ${second ? `<div class="small">${second}</div>` : ""}
+      <div class="row small"><span>${esc(dr)}</span><span style="white-space:nowrap">${esc(refillText(r))}</span></div>
+      <div class="row small"><span>Discard after: <b>${fmtDate(r.bud)}</b></span><span>RPh: ${esc(r.rph)}</span></div>
+      ${edu}
+    </div>`;
+  }
+  function auxHtml(r) {
+    if (!r.aux || !r.aux.length) return "";
+    const [w, h] = dims();
+    return `<div class="auxlabel" style="width:${w}in;height:${h}in">${r.aux.map(i => `<div class="aux-${AUX[i][1]}">${esc(AUX[i][0])}</div>`).join("")}</div>`;
+  }
+  // shrink the directions until they fit; returns false if they still don't at 6 pt.
+  // The sig box can shrink to zero and clip, so the label itself never overflows; test the sig.
+  function fit(container) {
+    let ok = true;
+    const over = el => el.scrollHeight > el.clientHeight + 1;
+    container.querySelectorAll(".label").forEach(lab => {
+      const sig = lab.querySelector(".sig"); let pt = 11;
+      sig.style.fontSize = pt + "pt";
+      while ((over(sig) || over(lab)) && pt > 6) { pt -= 0.5; sig.style.fontSize = pt + "pt"; }
+      if (over(sig) || over(lab)) ok = false;
+    });
+    return ok;
+  }
+
+  function checks(r, fits = true) {
+    const st = db.settings, controlled = /^C-(II|III|IV)$/.test(r.rxSched);
+    const list = [
+      ["Pharmacy name, address, phone", st.name && st.addr && st.phone],
+      ["Rx number", r.rxNum], ["Date filled", r.rxFilled],
+      ["Patient name", r.ptFirst && r.ptLast], ["Prescriber name", r.drName],
+      ["Drug name", r.drug], ["Dosage form", r.form],
+      ["Directions for use", r.sig], ["Quantity and unit", r.qty && r.qtyUnit],
+      ["Refills", r.refills !== ""], ["Rx expiration date", r.rxExpires],
+      ["Discard-after date", r.bud], ["RPh initials", r.rph]
+    ];
+    if (!r.rxCompound && r.genericFor) list.push(["Manufacturer (generic)", r.mfr]);
+    if (r.rxCompound) list.push(["Lot / control number", r.lot]);
+    if (controlled) list.push(["Prescriber DEA (controlled)", r.drDea]);
+    if (st.size === "sheet" && (r.aux || []).length > 5) list.push(["No more than 5 auxiliary labels (sheet has 4 spaces)", false]);
+    if (!fits) list.push(["Label text fits (shorten the directions or lower Scale %)", false]);
+    if (r.bud && r.rxFilled && r.bud < r.rxFilled) list.push(["Discard date is after the fill date", false]);
+    if (r.rxWritten && r.rxFilled && r.rxFilled < r.rxWritten) list.push(["Fill date is on/after date written", false]);
+    return list;
+  }
+
+  function render() {
+    const r = readForm();
+    const pv = $("preview");
+    pv.classList.toggle("paper", db.settings.size === "paper");
+    pv.innerHTML = db.settings.size === "sheet" ? sheetGroup(r, $("printAux").checked).html
+      : labelHtml(r) + ($("printAux").checked ? auxHtml(r) : "");
+    const fits = fit(pv); fitAux(pv);
+    // the label plus aux column is wider than the side panel; shrink the preview only
+    const grp = pv.querySelector(".sheetgroup");
+    if (grp) grp.style.zoom = Math.min(1, (pv.clientWidth - 28) / grp.offsetWidth);
+    $("checks").innerHTML = checks(r, fits).map(([t, ok]) => `<li class="${ok ? "ok" : "bad"}">${t}</li>`).join("");
+  }
+
+  function doPrint(r) {
+    const pa = $("printArea");
+    const aux = $("printAux").checked ? auxHtml(r) : "";
+    if (db.settings.size === "sheet") {
+      const sg = sheetGroup(r, $("printAux").checked);
+      pa.innerHTML = `<div class="sheet"><div class="sheetpage" style="height:${sheetH()}in"><div class="at" style="left:${sg.x0}in;top:${sg.y0}in">${sg.html}</div></div></div>`;
+    } else {
+      pa.innerHTML = `<div class="${db.settings.size === "paper" ? "paper" : ""}">${labelHtml(r)}${aux}</div>`;
+    }
+    pa.style.display = "block"; fit(pa); fitAux(pa); pa.style.display = "";
+    window.print();
+  }
+
+  // ---------- submissions ----------
+  function setSendStatus() {
+    const el = $("sendStatus");
+    if (!SUBMIT_ON) { el.className = "warn"; el.textContent = "Submissions off - saving on this computer only"; return; }
+    const n = db.queue.length;
+    el.className = n ? "warn" : "ok";
+    el.textContent = n ? `${n} submission${n > 1 ? "s" : ""} waiting to send` : (db.history.length ? "All submissions sent" : "");
+  }
+
+  async function sendOne(item) {
+    const res = await fetch(RXLAB_CONFIG.supabaseUrl + "/rest/v1/rpc/rxlab_submit", {
+      method: "POST",
+      headers: { "Content-Type": "application/json", "apikey": RXLAB_CONFIG.supabaseKey, "Authorization": "Bearer " + RXLAB_CONFIG.supabaseKey },
+      body: JSON.stringify({ p: item })
+    });
+    const body = await res.json().catch(() => ({}));
+    if (!res.ok) throw new Error("HTTP " + res.status);
+    return body;
+  }
+
+  let flushing = false;
+  async function flushQueue() {
+    if (!SUBMIT_ON || flushing || !db.queue.length) { setSendStatus(); return; }
+    flushing = true;
+    for (const item of [...db.queue]) {
+      let result;
+      try { result = await sendOne(item); } catch (e) { break; }   // offline or server down: keep the rest queued
+      db.queue = db.queue.filter(q => q.client_id !== item.client_id);
+      const h = db.history.find(x => item.pickup_code ? x.pickup === item.pickup_code : x.rxNum === item.rx_number);
+      if (h) h.sent = result && result.ok ? "yes" : "rejected: " + ((result && result.error) || "unknown");
+      persist();
+    }
+    flushing = false;
+    setSendStatus();
+    if ($("view-history").classList.contains("active")) renderHistory();
+  }
+
+  function enqueue(r) {
+    if (!SUBMIT_ON) return;
+    // innerText only keeps line breaks for rendered elements, so lay the label out off-screen
+    const lab = document.createElement("div");
+    lab.style.cssText = "position:absolute;left:-9999px;top:0";
+    lab.innerHTML = labelHtml(r);
+    document.body.appendChild(lab);
+    const labelText = lab.firstElementChild.innerText.split("\n").map(s => s.trim()).filter(Boolean).join("\n");
+    lab.remove();
+    db.queue.push({
+      client_id: uuid(), app_version: RXLAB_VERSION, saved_at: new Date().toISOString(),
+      student_email: user.email, product_id: r.productId, rx_number: r.rxNum, pickup_code: r.pickup,
+      record: r, label_text: labelText
+    });
+    persist();
+  }
+
+  // ---------- actions ----------
+  function newRx() {
+    const r = { rxNum: String(db.settings.nextRx), rxFilled: today(), rxWritten: today(), rxExpires: addYear(today()),
+      refills: "0", rxDaw: "0", drCred: "MD", rph: $("rph").value.trim(), aux: [], pickup: newPickup() };
+    writeForm(r);
+    expiresTouched = false;
+    $("ptLast").focus();
+  }
+  function saveRx() {
+    if (!user) { showLogin(); return null; }
+    const r = readForm();
+    if (!r.pickup) { r.pickup = newPickup(); $("pickup").value = r.pickup; }
+    const missing = checks(r).filter(c => !c[1]).length;
+    r.savedAt = new Date().toISOString(); r.user = user.email; r.sent = SUBMIT_ON ? "pending" : "local only";
+    // Rx numbers restart on every device, so the pickup code is what identifies an Rx
+    const idx = db.history.findIndex(h => h.pickup ? h.pickup === r.pickup : (h.rxNum === r.rxNum && h.user === r.user));
+    if (idx >= 0) db.history[idx] = r; else db.history.unshift(r);
+    if (+r.rxNum >= db.settings.nextRx) db.settings.nextRx = +r.rxNum + 1;
+    if (r.ptLast) { const p = {}; PT_FIELDS.forEach(f => p[f] = r[f]); db.patients[`${r.ptLast}, ${r.ptFirst}`] = p; }
+    if (r.drName && !PRESCRIBERS.some(p => p.drName === r.drName)) { const p = {}; DR_FIELDS.forEach(f => p[f] = r[f]); db.prescribers[r.drName] = p; }
+    enqueue(r);
+    persist(); refreshLists(); flushQueue();
+    toast(`Rx ${r.rxNum} saved` + (SUBMIT_ON ? ` - pickup code ${r.pickup}` : "") + (missing ? ` (${missing} label item${missing > 1 ? "s" : ""} still flagged)` : ""));
+    return r;
+  }
+
+  function allPrescribers() { return PRESCRIBERS.concat(Object.values(db.prescribers)); }
+
+  function refreshLists() {
+    $("dlPatients").innerHTML = Object.keys(db.patients).map(k => `<option value="${esc(db.patients[k].ptLast)}">${esc(k)}</option>`).join("");
+    $("dlPrescribers").innerHTML = allPrescribers().map(p => `<option value="${esc(p.drName)}">${esc(p.drCred)} - ${esc(p.drSpecialty || "")}</option>`).join("");
+    $("dlProducts").innerHTML = PRODUCTS.map(p => `<option value="${esc(p.drug)}">${esc([p.strength, p.form].filter(Boolean).join(" "))}</option>`).join("");
+    $("userBadge").textContent = user ? user.email : "";
+    setSendStatus();
+  }
+
+  function renderHistory() {
+    const q = $("histSearch").value.toLowerCase();
+    const rows = db.history.filter(r => !q || [r.rxNum, r.ptLast, r.ptFirst, r.drug].join(" ").toLowerCase().includes(q));
+    $("histBody").innerHTML = rows.map(r => `<tr>
+      <td>${esc(r.rxNum)}</td><td>${fmtDate(r.rxFilled)}</td><td>${esc(r.ptLast)}, ${esc(r.ptFirst)}</td>
+      <td>${esc([r.drug, r.strength].filter(Boolean).join(" "))}${r.rxCompound ? " <i>(cmpd)</i>" : ""}</td>
+      <td>${esc(r.sig)}</td><td>${esc(r.qty)} ${esc(r.qtyUnit)}</td><td>${esc(r.refills)}</td><td>${esc(r.user)}</td><td style="white-space:nowrap">${esc(r.pickup || "")}</td><td>${esc(r.sent || "")}</td>
+      <td style="white-space:nowrap"><button class="btn" data-open="${db.history.indexOf(r)}">Open</button> <button class="btn" data-refill="${db.history.indexOf(r)}">Copy as new</button></td></tr>`).join("");
+    $("histStatus").textContent = `${rows.length} of ${db.history.length} prescriptions`;
+  }
+
+  function exportCsv() {
+    const cols = ["user", "savedAt", "sent", "rxCompound", "productId", ...FIELDS, "aux"];
+    const cell = v => `"${String(Array.isArray(v) ? v.map(i => AUX[i][0]).join("; ") : (v == null ? "" : v)).replace(/"/g, '""')}"`;
+    const csv = [cols.join(","), ...db.history.map(r => cols.map(c => cell(r[c])).join(","))].join("\r\n");
+    const a = document.createElement("a");
+    a.href = URL.createObjectURL(new Blob([csv], { type: "text/csv" }));
+    a.download = `rx_history_${today()}.csv`;
+    a.click();
+  }
+
+  function toggleCompound() {
+    const c = $("rxCompound").checked;
+    $("compoundBox").style.display = c ? "" : "none";
+    ["lblGeneric", "lblMfr", "lblNdc"].forEach(id => $(id).style.display = c ? "none" : "");
+  }
+
+  function loadProduct() {
+    const p = PRODUCTS.find(x => x.drug.toLowerCase() === $("product").value.trim().toLowerCase());
+    if (!p) return;
+    $("product").value = p.drug;
+    $("drug").value = p.drug; $("strength").value = p.strength; $("form").value = p.form; $("qtyUnit").value = p.unit;
+    $("ingredients").value = p.formula;
+    $("lot").value = newLot();
+    $("rxCompound").checked = true;
+    ["genericFor", "mfr", "ndc"].forEach(f => $(f).value = "");
+    document.querySelector(`#auxPick input[value="${CMPD_AUX}"]`).checked = true;
+    toggleCompound(); render();
+  }
+
+  // ---------- sign in ----------
+  function showLogin() { $("loginModal").hidden = false; $("loginErr").textContent = ""; $("loginEmail").focus(); }
+  function doLogin() {
+    const email = $("loginEmail").value.trim().toLowerCase();
+    if (!new RegExp(RXLAB_CONFIG.emailPattern).test(email)) { $("loginErr").textContent = RXLAB_CONFIG.emailHint; return; }
+    user = { email };
+    try { sessionStorage.setItem("rxlab.user", JSON.stringify(user)); } catch (e) { /* tab-only fallback */ }
+    $("loginModal").hidden = true;
+    refreshLists(); newRx();
+  }
+
+  function loadSettingsForm() {
+    const s = db.settings;
+    $("setName").value = s.name; $("setPhone").value = s.phone; $("setAddr").value = s.addr; $("setPic").value = s.pic;
+    $("setNextRx").value = s.nextRx; $("setSize").value = s.size; $("setW").value = s.w; $("setH").value = s.h;
+    $("setScale").value = s.scale; $("setUpper").checked = s.upper;
+    $("setOffX").value = s.offX; $("setOffY").value = s.offY; $("setSheetH").value = s.sheetH;
+    $("setAuxX").value = s.auxX; $("setAuxY").value = s.auxY; $("setAuxGap").value = s.auxGap;
+    $("cfgStatus").textContent = SUBMIT_ON
+      ? `Submissions are ON. Each saved Rx is sent to the course database${db.queue.length ? `; ${db.queue.length} waiting to send` : ""}.`
+      : "Submissions are OFF in this copy (no database key). Saved prescriptions stay on this computer; use Export CSV.";
+  }
+
+  // ---------- wiring ----------
+  $("auxPick").innerHTML = AUX.map((a, i) => `<label><input type="checkbox" value="${i}"><span class="aux-${a[1]}" style="padding:0 4px;border:1px solid #999">${esc(a[0])}</span></label>`).join("");
+
+  document.querySelectorAll("header nav button").forEach(b => b.addEventListener("click", () => {
+    document.querySelectorAll("header nav button").forEach(x => x.classList.toggle("active", x === b));
+    document.querySelectorAll(".view").forEach(v => v.classList.toggle("active", v.id === "view-" + b.dataset.view));
+    if (b.dataset.view === "history") renderHistory();
+    if (b.dataset.view === "settings") loadSettingsForm();
+  }));
+
+  $("view-entry").addEventListener("input", render);
+  $("view-entry").addEventListener("change", render);
+  $("rxCompound").addEventListener("change", () => {
+    toggleCompound();
+    document.querySelector(`#auxPick input[value="${CMPD_AUX}"]`).checked = $("rxCompound").checked;
+    render();
+  });
+  $("product").addEventListener("change", loadProduct);
+  $("product").addEventListener("input", () => { if (PRODUCTS.some(p => p.drug === $("product").value)) loadProduct(); });
+  $("rxWritten").addEventListener("change", () => { if (!expiresTouched && $("rxWritten").value) { $("rxExpires").value = addYear($("rxWritten").value); render(); } });
+  $("rxExpires").addEventListener("input", () => { expiresTouched = true; });
+  $("sigCode").addEventListener("blur", () => { if ($("sigCode").value.trim()) { $("sig").value = expandSig($("sigCode").value); render(); } });
+  $("sigCode").addEventListener("keydown", e => { if (e.key === "Enter") { e.preventDefault(); $("sig").value = expandSig($("sigCode").value); render(); $("qtyWritten").focus(); } });
+  $("ptLast").addEventListener("change", () => {
+    const key = Object.keys(db.patients).find(k => db.patients[k].ptLast.toLowerCase() === $("ptLast").value.trim().toLowerCase());
+    if (key && !$("ptFirst").value) { Object.entries(db.patients[key]).forEach(([f, v]) => $(f).value = v); render(); }
+  });
+  function loadPrescriber() {
+    const p = allPrescribers().find(x => x.drName.toLowerCase() === $("drName").value.trim().toLowerCase());
+    if (p) { DR_FIELDS.forEach(f => $(f).value = p[f] || ""); render(); }
+  }
+  $("drName").addEventListener("change", loadPrescriber);
+  $("drName").addEventListener("input", () => { if (allPrescribers().some(p => p.drName === $("drName").value)) loadPrescriber(); });
+
+  $("btnNew").addEventListener("click", newRx);
+  $("btnSave").addEventListener("click", () => saveRx());
+  $("btnPrint").addEventListener("click", () => doPrint(readForm()));
+  // prints with the values typed in Setup (saved first), always on the label sheet page size
+  $("btnTestPrint").addEventListener("click", () => {
+    $("setSize").value = "sheet"; $("btnSaveSettings").click();
+    $("printArea").innerHTML = `<div class="sheet">${alignmentSheet()}</div>`;
+    window.print();
+  });
+  $("btnSavePrint").addEventListener("click", () => { const r = saveRx(); if (r) doPrint(r); });
+  document.addEventListener("keydown", e => {
+    if (!$("loginModal").hidden) { if (e.key === "Enter") doLogin(); return; }
+    if (!$("pickupModal").hidden) { if (e.key === "Enter") loadPickup(); if (e.key === "Escape") $("pickupModal").hidden = true; return; }
+    if (e.key === "F2") { e.preventDefault(); newRx(); }
+    if (e.key === "F9") { e.preventDefault(); const r = saveRx(); if (r) doPrint(r); }
+  });
+  $("btnLogin").addEventListener("click", doLogin);
+
+  // ---------- pickup from another device ----------
+  if (!SUBMIT_ON) $("btnPickup").style.display = "none";
+  $("loginEmail").placeholder = RXLAB_CONFIG.emailPlaceholder;
+  $("btnPickup").addEventListener("click", () => {
+    if (!user) { showLogin(); return; }
+    $("pickupWho").textContent = user.email; $("pickupCode").value = ""; $("pickupErr").textContent = "";
+    $("pickupModal").hidden = false; $("pickupCode").focus();
+  });
+  $("btnPickupCancel").addEventListener("click", () => { $("pickupModal").hidden = true; });
+  $("btnPickupLoad").addEventListener("click", () => loadPickup());
+  let pickupBusy = false;
+  async function loadPickup() {
+    const code = normPickup($("pickupCode").value);
+    if (code.length !== 6) { $("pickupErr").textContent = "The code is 6 letters and numbers, e.g. K7M-2QX."; return; }
+    if (pickupBusy) return;
+    pickupBusy = true; $("pickupErr").textContent = "Loading...";
+    let body;
+    try {
+      const res = await fetch(RXLAB_CONFIG.supabaseUrl + "/rest/v1/rpc/rxlab_pickup", {
+        method: "POST",
+        headers: { "Content-Type": "application/json", "apikey": RXLAB_CONFIG.supabaseKey, "Authorization": "Bearer " + RXLAB_CONFIG.supabaseKey },
+        body: JSON.stringify({ p_email: user.email, p_code: code })
+      });
+      body = await res.json().catch(() => ({}));
+      if (!res.ok) throw new Error("HTTP " + res.status);
+    } catch (e) {
+      pickupBusy = false;
+      $("pickupErr").textContent = "Could not reach the course database. Check the internet connection and try again.";
+      return;
+    }
+    pickupBusy = false;
+    if (!body || !body.ok || !body.record) {
+      $("pickupErr").textContent = `No Rx with code ${code.slice(0, 3)}-${code.slice(3)} for ${user.email}. Check the code, and check that its Rx History row on your device says "yes" under Sent.`;
+      return;
+    }
+    const r = body.record;
+    r.pickup = r.pickup || `${code.slice(0, 3)}-${code.slice(3)}`;
+    writeForm(r);
+    $("pickupModal").hidden = true;
+    document.querySelector('header nav button[data-view="entry"]').click();
+    toast(`Loaded Rx ${r.rxNum || ""} (${r.pickup}). Check it, then Print Label.`);
+  }
+  $("btnSignOut").addEventListener("click", () => {
+    user = null;
+    try { sessionStorage.removeItem("rxlab.user"); } catch (e) { /* ignore */ }
+    $("loginEmail").value = ""; $("rph").value = "";
+    refreshLists(); showLogin();
+  });
+
+  $("histSearch").addEventListener("input", renderHistory);
+  $("histBody").addEventListener("click", e => {
+    const open = e.target.dataset.open, refill = e.target.dataset.refill;
+    const r = db.history[+(open || refill)]; if (!r || !(open || refill)) return;
+    const copy = JSON.parse(JSON.stringify(r));
+    if (refill) { copy.rxNum = String(db.settings.nextRx); copy.rxFilled = today(); copy.bud = ""; copy.lot = copy.rxCompound ? newLot() : ""; copy.pickup = newPickup(); }
+    writeForm(copy);
+    document.querySelector('header nav button[data-view="entry"]').click();
+  });
+  $("btnExport").addEventListener("click", exportCsv);
+  $("btnResend").addEventListener("click", () => { flushQueue(); toast(db.queue.length ? "Retrying..." : "Nothing waiting to send"); });
+  $("btnClearHist").addEventListener("click", () => {
+    if (!db.history.length) return;
+    if (confirm(`Delete all ${db.history.length} saved prescriptions and patient profiles from this computer? Submissions already sent are not affected.`)) {
+      db.history = []; db.patients = {}; db.prescribers = {}; persist(); refreshLists(); renderHistory();
+    }
+  });
+  $("btnSaveSettings").addEventListener("click", () => {
+    const s = db.settings;
+    s.name = $("setName").value.trim(); s.phone = $("setPhone").value.trim(); s.addr = $("setAddr").value.trim(); s.pic = $("setPic").value.trim();
+    s.nextRx = Math.max(1, parseInt($("setNextRx").value, 10) || s.nextRx);
+    s.size = $("setSize").value; s.w = +$("setW").value || 4; s.h = +$("setH").value || 2.5;
+    s.scale = Math.min(150, Math.max(50, +$("setScale").value || 100)); s.upper = $("setUpper").checked;
+    s.offX = Math.max(0, +$("setOffX").value || 0); s.offY = Math.max(0, +$("setOffY").value || 0);
+    s.sheetH = Math.max(3, +$("setSheetH").value || 11);
+    s.auxX = Math.max(0, +$("setAuxX").value || 0); s.auxY = Math.max(0, +$("setAuxY").value || 0); s.auxGap = Math.max(0, +$("setAuxGap").value || 0);
+    persist(); sizeCss(); refreshLists();
+    if (!db.history.some(h => h.rxNum === $("rxNum").value)) $("rxNum").value = s.nextRx;
+    render(); toast("Setup saved");
+  });
+
+  sizeCss(); refreshLists(); newRx();
+  if (!user) showLogin();
+  flushQueue();
+  window.addEventListener("online", flushQueue);
+})();
+</script>
+</body>
+</html>
