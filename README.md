@@ -60,7 +60,7 @@ sheet's edges, then print the alignment test sheet and adjust. Labels under 2 in
 
 Piloted in a non-sterile compounding lab at Union University College of Pharmacy, fall 2026.
 
-## Licence
+## License
 
 To be decided.
 
