@@ -58,11 +58,13 @@ sheet's edges, then print the alignment test sheet and adjust. Labels under 2 in
 - 1.4 (2026-10): compact layout for small label stock; the label check flags directions that do not fit.
 - 1.2 (2026-10): pickup codes for entering on one device and printing on another.
 
-Piloted in a non-sterile compounding lab at Union University College of Pharmacy, fall 2026.
+Piloted in a non-sterile compounding lab, fall 2026.
 
 ## License
 
-To be decided.
+[MIT](LICENSE). Use it, change it, and share it, including in your own courses; keep the copyright notice.
+The notice is also in the comment at the top of `RxLab.html`, so it travels with the single file.
+RxLab is a teaching tool, not pharmacy software for dispensing to patients.
 
 ## Contact
 
