@@ -1,14 +1,16 @@
--- RxLab submissions: run once in the SQL Editor of your Supabase project.
+-- ScriptBench submissions: run once in the SQL Editor of your Supabase project.
+-- (The table and functions keep the rxlab_ prefix from the tool's earlier name, RxLab;
+-- ScriptBench.html calls them by these names, so leave them as they are.)
 -- Safe to re-run.
 --
 -- Security model: the browser (publishable / anon key) can only call two functions.
 --   rxlab_submit(p)              insert one save; cannot read, update, or delete anything
 --   rxlab_pickup(email, code)    return the latest save for that email + pickup code only
--- Grading reads the table with the SECRET (service_role) key, which never goes in RxLab.html.
+-- Grading reads the table with the SECRET (service_role) key, which never goes in ScriptBench.html.
 --
 -- Who may submit: edit the email pattern in BOTH functions (search for EMAIL CHECK)
 -- to your school's domain, e.g. '^[a-z0-9._%+-]+@myschool\.edu$', and keep
--- RXLAB_CONFIG.emailPattern in RxLab.html in step with it.
+-- RXLAB_CONFIG.emailPattern in ScriptBench.html in step with it.
 
 create table if not exists public.rxlab_submissions (
   id            bigint generated always as identity primary key,

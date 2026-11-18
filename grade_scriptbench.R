@@ -1,17 +1,17 @@
-# Pull RxLab submissions from Supabase and check them against an answer key.
+# Pull ScriptBench submissions from Supabase and check them against an answer key.
 #
-#   Sys.setenv(RXLAB_SUPABASE_URL = "https://<project>.supabase.co",
-#              RXLAB_SUPABASE_SERVICE_KEY = "<secret key>")   # better: put both in .Renviron
-#   source("grade_rxlab.R")
-#   x <- rxlab_grade(key = CASE_KEY, since = "2027-01-15")
+#   Sys.setenv(SCRIPTBENCH_SUPABASE_URL = "https://<project>.supabase.co",
+#              SCRIPTBENCH_SUPABASE_SERVICE_KEY = "<secret key>")   # better: put both in .Renviron
+#   source("grade_scriptbench.R")
+#   x <- scriptbench_grade(key = CASE_KEY, since = "2027-01-15")
 #
-# Writes submissions/rxlab_<today>.csv: one row per save. A student who corrects and
+# Writes submissions/scriptbench_<today>.csv: one row per save. A student who corrects and
 # re-saves the same Rx appears twice; `latest` marks the last save.
-# Needs the httr and jsonlite packages. Never put the secret key in RxLab.html.
+# Needs the httr and jsonlite packages. Never put the secret key in ScriptBench.html.
 
-# One row per product_id (the id in RxLab's PRODUCTS list). `offset` = days between the
+# One row per product_id (the id in ScriptBench's PRODUCTS list). `offset` = days between the
 # date written on the prescription and the day students fill it (0 = written today).
-# The example uses the practice products that ship with RxLab; replace with your cases.
+# The example uses the practice products that ship with ScriptBench; replace with your cases.
 CASE_KEY <- data.frame(
   product_id     = c("x_hydrocortisone_oint", "x_omeprazole_susp"),
   offset         = c(0, 2),
@@ -32,10 +32,10 @@ roster_name <- function(email, roster = NULL) {
   ifelse(is.na(hit), guess, hit)
 }
 
-rxlab_grade <- function(key = CASE_KEY, since = NULL, roster = NULL,
+scriptbench_grade <- function(key = CASE_KEY, since = NULL, roster = NULL,
                         tz = "America/Chicago", out_dir = "submissions") {
-  url <- Sys.getenv("RXLAB_SUPABASE_URL")
-  sk  <- Sys.getenv("RXLAB_SUPABASE_SERVICE_KEY")
+  url <- Sys.getenv("SCRIPTBENCH_SUPABASE_URL")
+  sk  <- Sys.getenv("SCRIPTBENCH_SUPABASE_SERVICE_KEY")
   stopifnot(nzchar(url), nzchar(sk))
 
   q <- "select=*&order=received_at.asc"
@@ -86,7 +86,7 @@ rxlab_grade <- function(key = CASE_KEY, since = NULL, roster = NULL,
   x$latest <- !duplicated(paste(x$student_email, x$product_id), fromLast = TRUE)
 
   dir.create(out_dir, showWarnings = FALSE, recursive = TRUE)
-  out <- file.path(out_dir, sprintf("rxlab_%s.csv", Sys.Date()))
+  out <- file.path(out_dir, sprintf("scriptbench_%s.csv", Sys.Date()))
   write.csv(x[, setdiff(names(x), c("offset", "received_at", "sub_day"))], out, row.names = FALSE, na = "")
   message(sprintf("%d submissions from %d students -> %s", nrow(x), length(unique(x$student_email)), out))
   invisible(x)

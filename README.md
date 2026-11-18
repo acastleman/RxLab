@@ -1,9 +1,9 @@
-# RxLab
+# ScriptBench
 
-A prescription entry and labeling tool for pharmacy skills and compounding labs, in **one HTML file**.
-No installation, no administrator rights, no plug-ins: open `RxLab.html` in Chrome or Edge.
+A prescription entry and labeling tool for pharmacy compounding labs, in **one HTML file**.
+No installation, no administrator rights, no plug-ins: open `ScriptBench.html` in Chrome or Edge.
 
-**Try it:** https://acastleman.github.io/RxLab/RxLab.html (standalone demo; nothing you type leaves your browser)
+**Try it:** https://acastleman.github.io/ScriptBench/ScriptBench.html (standalone demo; nothing you type leaves your browser)
 
 ## What students do
 
@@ -26,19 +26,19 @@ browser only, and the History tab can export a CSV. Entering and printing work w
 save reaches the instructor for grading. This needs an internet connection when saving and loading; a save that cannot
 be sent waits on the device and retries.
 
-1. Create a free [Supabase](https://supabase.com) project and run `supabase_rxlab.sql` in its SQL Editor.
+1. Create a free [Supabase](https://supabase.com) project and run `supabase_scriptbench.sql` in its SQL Editor.
    Edit the two `EMAIL CHECK` lines to your school's domain.
-2. In `RxLab.html`, set `RXLAB_CONFIG.supabaseUrl` and `supabaseKey` to the project URL and **publishable** key, and
-   `emailPattern` to the same domain rule. Never put the secret (service_role) key in the HTML.
+2. In `ScriptBench.html`, set `RXLAB_CONFIG.supabaseUrl` and `supabaseKey` to the project URL and **publishable** key,
+   and `emailPattern` to the same domain rule. Never put the secret (service_role) key in the HTML.
 3. Hand out that copy (LMS download, shared drive, or the lab PCs' desktops).
-4. Grade with `grade_rxlab.R` (needs the secret key, kept in your `.Renviron`). Edit `CASE_KEY` for your cases.
+4. Grade with `grade_scriptbench.R` (needs the secret key, kept in your `.Renviron`). Edit `CASE_KEY` for your cases.
 
 Students' emails and entries are stored in **your** Supabase project; treat them as education records under your
 institution's FERPA policy.
 
 ## Adapting it
 
-All of this is in the `<script>` near the top of `RxLab.html`:
+All of this is in the `<script>` near the top of `ScriptBench.html`:
 
 | What | Where |
 |---|---|
@@ -54,6 +54,9 @@ sheet's edges, then print the alignment test sheet and adjust. Labels under 2 in
 
 ## Versions
 
+- 1.6 (2026-11): renamed from RxLab to ScriptBench. Internal names (`RXLAB_CONFIG`, the `rxlab.v1` browser storage
+  key, the `rxlab_*` database table and functions) keep the old prefix, so existing installs and saved prescriptions
+  keep working.
 - 1.5 (2026-11): sig expansion keeps plain English as typed ("as needed" no longer becomes "into the left ear").
 - 1.4 (2026-10): compact layout for small label stock; the label check flags directions that do not fit.
 - 1.2 (2026-10): pickup codes for entering on one device and printing on another.
@@ -63,8 +66,8 @@ Piloted in a non-sterile compounding lab, fall 2026.
 ## License
 
 [MIT](LICENSE). Use it, change it, and share it, including in your own courses; keep the copyright notice.
-The notice is also in the comment at the top of `RxLab.html`, so it travels with the single file.
-RxLab is a teaching tool, not pharmacy software for dispensing to patients.
+The notice is also in the comment at the top of `ScriptBench.html`, so it travels with the single file.
+ScriptBench is a teaching tool, not pharmacy software for dispensing to patients.
 
 ## Contact
 

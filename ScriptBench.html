@@ -2,16 +2,19 @@
 <html lang="en">
 <head>
 <meta charset="utf-8">
-<title>RxLab Pharmacy System</title>
+<title>ScriptBench</title>
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <!--
-  RxLab - prescription entry and label printing for pharmacy skills labs.
+  ScriptBench - prescription entry and label printing for pharmacy compounding labs.
   One self-contained file: open it in Chrome or Edge. Settings are in RXLAB_CONFIG below.
-  https://github.com/acastleman/RxLab
+  https://github.com/acastleman/ScriptBench
 
   Copyright (c) 2026 Andrew Castleman. MIT License: free to use, copy, modify, and
   distribute, provided this notice is kept. Provided "as is", without warranty of any kind.
-  Full text: https://github.com/acastleman/RxLab/blob/main/LICENSE
+  Full text: https://github.com/acastleman/ScriptBench/blob/main/LICENSE
+
+  Formerly named RxLab. Storage keys (rxlab.v1, rxlab.user) and the rxlab_* database
+  objects keep that prefix so existing installs and saved prescriptions keep working.
 -->
 <style id="pageSize">@page { size: 4in 2.5in; margin: 0; }</style>
 <style>
@@ -315,7 +318,7 @@
 <!-- ================= SIGN IN ================= -->
 <div class="modal" id="loginModal" hidden>
   <div class="box">
-    <div class="ph">RxLab sign in</div>
+    <div class="ph">ScriptBench sign in</div>
     <div class="grid">
       <label>Email<input id="loginEmail" autocomplete="off"></label>
     </div>
@@ -352,14 +355,13 @@
 </datalist>
 
 <script>
-/* Filled in by build_rxlab.R. Left blank, submissions are saved locally only. */
 const RXLAB_CONFIG = {
   /* Leave both blank to run standalone: saves stay on this computer, no pickup codes.
-     To collect submissions, run supabase_rxlab.sql in your Supabase project and paste
+     To collect submissions, run supabase_scriptbench.sql in your Supabase project and paste
      its URL and PUBLISHABLE key here (never the secret / service_role key). */
   supabaseUrl: "",
   supabaseKey: "",
-  /* who may sign in (keep in step with the email check in supabase_rxlab.sql),
+  /* who may sign in (keep in step with the email check in supabase_scriptbench.sql),
      e.g. "^[a-z0-9._%+-]+@myschool\\.edu$" */
   emailPattern: "^[^@\\s]+@[^@\\s]+\\.[^@\\s]+$",
   emailHint: "Enter your email address.",
@@ -367,7 +369,7 @@ const RXLAB_CONFIG = {
   /* first-run pharmacy details on the label (each PC can change them in Setup) */
   pharmacy: { name: "Your College of Pharmacy", phone: "(000) 000-0000", addr: "123 Campus Drive, City, ST 00000" }
 };
-const RXLAB_VERSION = "1.5";
+const RXLAB_VERSION = "1.6";
 
 /* Prescriber directory: fictional practice prescribers. Replace or add your own. */
 const PRESCRIBERS = [
@@ -618,7 +620,7 @@ const PRODUCTS = [
     g.push(`<text x="${(+st.auxX || 0) * 100}" y="${geom().slots[3].y * 100 + geom().slots[3].h * 100 + 14}" font-size="9" font-family="Arial">Aux: left ${(+st.auxX || 0).toFixed(2)}, top ${(+st.auxY || 0).toFixed(2)}, gap ${(+st.auxGap || 0).toFixed(2)} in</text>`);
     g.push(`<text x="${x + 8}" y="${y + 20}" font-size="11" font-family="Arial" font-weight="bold">Label: left ${(+st.offX || 0).toFixed(2)} in, top ${(+st.offY || 0).toFixed(2)} in, ${w} x ${h} in</text>`);
     const sl3 = geom().slots[3], ty = Math.min(HH - 60, Math.max(y + h * 100, (sl3.y + sl3.h) * 100) + 50);
-    ["RxLab alignment test. Rulers are in inches, ticks every 0.05 in, grid every 0.25 in.",
+    ["ScriptBench alignment test. Rulers are in inches, ticks every 0.05 in, grid every 0.25 in.",
      "1. Plain paper: lay this over a label sheet against a window and read where the label's left and top edges fall.",
      "2. Label sheet: the dashed boxes should sit on the labels' edges. Box too far right/down? Lower its left/top by that amount.",
      "Print at Scale 100 (or Default) with Margins Default or None. Check the 1-inch grid with a ruler: if it is not 1 inch, the dialog is scaling."]
